@@ -9,17 +9,19 @@
 get_cpu_usage() {
     # Using top command to get CPU idle percentage, then calculate used percentage
     # Try first format: %Cpu(s): ... id
-    cpu_idle=$(top -bn1 | grep -i "cpu(s)" | sed 's/,//g' | awk '{for(i=1;i<=NF;i++) if($i=="id") print $(i-1)}' | head -1)
+    cpu_idle=$(top -bn1 | grep -i "cpu(s)" | sed 's/,//g' | awk '{for(i=1;i<=NF;i++) if($i=="id") print $(i-1)}' | head -1 | sed 's/[^0-9.]//g')
     
     # Ensure cpu_idle has a valid value, use fallback if empty
     if [ -z "$cpu_idle" ]; then
         # Fallback: try using mpstat if available
         if command -v mpstat >/dev/null 2>&1; then
-            cpu_idle=$(mpstat 1 1 | tail -1 | awk '{print $NF}')
-        else
-            # Last resort: assume 50% idle as a reasonable middle ground
-            cpu_idle=50
+            cpu_idle=$(mpstat 1 1 | tail -1 | awk '{print $NF}' | sed 's/[^0-9.]//g')
         fi
+    fi
+    
+    # Last resort: assume 50% idle as a reasonable middle ground if still empty
+    if [ -z "$cpu_idle" ]; then
+        cpu_idle=50
     fi
     
     # Calculate CPU usage (100 - idle)
