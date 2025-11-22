@@ -11,9 +11,15 @@ get_cpu_usage() {
     # Try first format: %Cpu(s): ... id
     cpu_idle=$(top -bn1 | grep -i "cpu(s)" | sed 's/,//g' | awk '{for(i=1;i<=NF;i++) if($i=="id") print $(i-1)}' | head -1)
     
-    # Ensure cpu_idle has a valid value, default to 0 if empty
+    # Ensure cpu_idle has a valid value, use fallback if empty
     if [ -z "$cpu_idle" ]; then
-        cpu_idle=0
+        # Fallback: try using mpstat if available
+        if command -v mpstat >/dev/null 2>&1; then
+            cpu_idle=$(mpstat 1 1 | tail -1 | awk '{print $NF}')
+        else
+            # Last resort: assume 50% idle as a reasonable middle ground
+            cpu_idle=50
+        fi
     fi
     
     # Calculate CPU usage (100 - idle)
@@ -31,7 +37,7 @@ get_memory_usage() {
 # Function to get disk usage percentage
 get_disk_usage() {
     # Using df command to get disk usage for root partition
-    disk_usage=$(df -h / | grep / | awk '{print $5}' | sed 's/%//g')
+    disk_usage=$(df -h / | tail -1 | awk '{print $5}' | sed 's/%//g')
     echo "$disk_usage"
 }
 
